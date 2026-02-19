@@ -1,7 +1,10 @@
 import cv2
 from inference_sdk import InferenceHTTPClient
 from inference_sdk.webrtc import RTSPSource, StreamConfig, VideoMetadata
- 
+import os
+
+os.makedirs("image", exist_ok=True)
+
 # Initialize client
 client = InferenceHTTPClient.init(
     api_url="http://localhost:9001",
