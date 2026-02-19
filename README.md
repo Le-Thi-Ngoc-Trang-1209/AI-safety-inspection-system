@@ -86,3 +86,4 @@ On Ubuntu or Mac OS, you can use `ffplay` (part of the `ffmpeg` library) to prev
 ```
 ffplay -fflags nobuffer -fflags discardcorrupt -flags low_delay -framedrop rtsp://localhost:8554/mystream
 ```
+# AI-safety-inspection-system
