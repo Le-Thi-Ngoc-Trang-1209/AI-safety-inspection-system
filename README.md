@@ -11,7 +11,7 @@ sudo docker run -d \
   --name inference-server \
   --runtime nvidia \
   --network host \
-  --mount type=bind,source=$HOME/Desktop/AI,target=/workspace/code \
+  --mount type=bind,source=$HOME/Desktop/AI-safety-inspection-system,target=/workspace/code \
   --volume ~/.inference/cache:/tmp:rw \
   --security-opt="no-new-privileges" \
   --cap-drop="ALL" \
