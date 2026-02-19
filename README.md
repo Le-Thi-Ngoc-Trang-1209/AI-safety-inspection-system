@@ -23,7 +23,7 @@ sudo docker run -d \
   -e YOLO_CONFIG_DIR=/tmp/ultralytics \
   roboflow/roboflow-inference-server-jetson-6.2.0:latest
 ```
-I installed inference v0.64.0 version.
+I installed inference v0.64.8 version.
 
 ## OAK camera
 
