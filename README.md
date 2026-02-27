@@ -32,7 +32,7 @@ sudo docker run -d \
   -e YOLO_CONFIG_DIR=/tmp/ultralytics \
   roboflow/roboflow-inference-server-jetson-6.2.0:latest
 ```
-I installed inference v0.64.8 version.
+I installed inference v0.64.8.
 
 ## OAK camera
 
@@ -98,19 +98,19 @@ ffplay -fflags nobuffer -fflags discardcorrupt -flags low_delay -framedrop rtsp:
 
 ## Error
 
-Summary
-Can not run? No images are displayed? The system killed without showing any errors? It's incompatibility issue.
+Summary: Can not run? No images are displayed? The system killed without showing any errors? It's incompatibility issue.
 
-Environment
-Jetson device, JetPack 6.2.2 (system OpenCV built with CUDA v4.10 or v4.12)
+Environment: Jetson device, JetPack 6.2.2 (system OpenCV built with CUDA v4.10 or v4.12).
 Inference v0.64.0 ~ 1.0.1.
 
-Solution
+Solution:
 Uninstall the bundled opencv-python wheel.
 Pin NumPy to 1.26.4.
 
-```pip install numpy==1.26.4
-pip uninstall opencv-python```
+```
+pip install numpy==1.26.4
+pip uninstall opencv-python
+```
 
 Finding
 This points to an incompatibility between the pip opencv-python wheel bundled with the Inference package and the system OpenCV with CUDA (JetPack 6.2.2).
