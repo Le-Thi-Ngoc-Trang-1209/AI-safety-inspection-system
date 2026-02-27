@@ -2,6 +2,15 @@
 
 I am currently using this code from the Desktop directory (Jetson Orin Nano 8GB with Jetpack 6.2.2, OpenCV 4.10.0 with CUDA). Please make sure to download it to the correct location to avoid any errors.
 
+## Jetpack 6.2.2
+Link Youtube: [Tutorial](https://www.youtube.com/watch?v=Ucg5Zqm9ZMk&list=PLXYLzZ3XzIbhh73dPHczlCzDwtO1N42UG&index=3)
+
+## Tthe system OpenCV with CUDA
+
+JetPack 6.2 requires OpenCV 4.10+ for CUDA 12.6 compatibility. You can install it by following these steps:
+[opencv/v4.12](https://zenn.dev/ryuya0124/articles/766cbe737eb281)
+[opencv/v4.10](https://www.cytron.io/tutorial/build-opencv-with-cuda-support-for-jetson?r=1)
+
 ## Inference (Roboflow)
 
 Original instructions are at: [Roboflow/inference](https://inference.roboflow.com/install/jetson/#manually-starting-the-container)
@@ -86,4 +95,24 @@ On Ubuntu or Mac OS, you can use `ffplay` (part of the `ffmpeg` library) to prev
 ```
 ffplay -fflags nobuffer -fflags discardcorrupt -flags low_delay -framedrop rtsp://localhost:8554/mystream
 ```
+
+## Error
+
+Summary
+Can not run? No images are displayed? The system killed without showing any errors? It's incompatibility issue.
+
+Environment
+Jetson device, JetPack 6.2.2 (system OpenCV built with CUDA v4.10 or v4.12)
+Inference v0.64.0 ~ 1.0.1.
+
+Solution
+Uninstall the bundled opencv-python wheel.
+Pin NumPy to 1.26.4.
+
+```pip install numpy==1.26.4
+pip uninstall opencv-python```
+
+Finding
+This points to an incompatibility between the pip opencv-python wheel bundled with the Inference package and the system OpenCV with CUDA (JetPack 6.2.2).
+
 # AI-safety-inspection-system
