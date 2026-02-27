@@ -5,7 +5,7 @@ I am currently using this code from the Desktop directory (Jetson Orin Nano 8GB 
 ## Jetpack 6.2.2
 Link Youtube: [Tutorial](https://www.youtube.com/watch?v=Ucg5Zqm9ZMk&list=PLXYLzZ3XzIbhh73dPHczlCzDwtO1N42UG&index=3)
 
-## Tthe system OpenCV with CUDA
+## The system OpenCV with CUDA
 
 JetPack 6.2 requires OpenCV 4.10+ for CUDA 12.6 compatibility. You can install it by following these steps:
 [opencv/v4.12](https://zenn.dev/ryuya0124/articles/766cbe737eb281)
