@@ -1,4 +1,4 @@
-# Guidance
+# Guidance: The combination of Roboflow + Jetson + OAK
 
 I am currently using this code from the Desktop directory (Jetson Orin Nano 8GB with Jetpack 6.2.2, OpenCV 4.10.0 with CUDA). Please make sure to download it to the correct location to avoid any errors.
 
