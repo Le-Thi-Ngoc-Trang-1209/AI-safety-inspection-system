@@ -130,8 +130,8 @@ obj = DriveAPI(credentials_path=cred_path, token_path=token_path)
 cloud_name = obj.ensure_folder(folder_name="Inspectionsystemcloud", parent_folder_id=None)
 image_folder_name = obj.ensure_folder(folder_name="image", parent_folder_id=cloud_name)
 csv_folder_name = obj.ensure_folder(folder_name="csv", parent_folder_id=cloud_name)
-time = datetime.now().astimezone() 
-date_str = time.strftime("%Y%m%d")
+day_time = datetime.now().astimezone() 
+date_str = day_time.strftime("%Y%m%d")
 day_folder_name = obj.ensure_folder(folder_name=date_str, parent_folder_id=image_folder_name)
 
 
