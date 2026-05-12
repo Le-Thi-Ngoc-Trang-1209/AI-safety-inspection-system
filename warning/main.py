@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 import os
 import cv2
 from inference_sdk import InferenceHTTPClient
@@ -10,6 +10,11 @@ import csv
 from upload_to_cloud import DriveAPI
 import json
 from dotenv import load_dotenv
+import threading
+
+def upload_async(image_path, day_folder_name):
+    obj.FileUpload(filepath=image_path, parent_folder_id=day_folder_name)
+
 
 
 #------------------------- Initialize ---------------------------------
@@ -202,7 +207,8 @@ def show_frame(frame, metadata):
     if Flag:
         image_path = save_snapshot(frame, frame_time, out_dir="summary/Images")
         Flag = False
-        obj.FileUpload(filepath=image_path, parent_folder_id=day_folder_name)
+        #obj.FileUpload(filepath=image_path, parent_folder_id=day_folder_name)
+        threading.Thread(target=upload_async, args=(image_path,day_folder_name), daemon=True).start()
     
     cv2.imshow("Workflow Output", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):

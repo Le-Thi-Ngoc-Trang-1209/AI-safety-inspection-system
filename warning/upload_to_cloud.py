@@ -1,5 +1,6 @@
 # import the required libraries
 from __future__ import print_function
+from datetime import time
 from http.cookiejar import LoadError
 import os.path
 from google.oauth2.credentials import Credentials
@@ -117,8 +118,14 @@ class DriveAPI:
             file = self.service.files().create(
                 body=file_metadata, media_body=media, fields='id').execute()
             print(f'File uploaded with ID: {file.get("id")}')
-        except:
-            raise LoadError("Can't Upload File.")
+            
+        except TimeoutError:
+            print("Timeout Error!")
+            time.sleep(2)
+        except Exception as e:
+            print(f"Upload failed: {e}")
+
+
         
     # Update file (only csv) if file existed using fileId
     def overwrite_file(self, file_id, filepath, mime_type="text/csv"):
