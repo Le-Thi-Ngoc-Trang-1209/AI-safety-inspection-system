@@ -5,7 +5,7 @@ I am currently using this code from the Desktop directory (Jetson Orin Nano 8GB 
 ## Jetpack 6.2.2
 Link Youtube: [Tutorial](https://www.youtube.com/watch?v=Ucg5Zqm9ZMk&list=PLXYLzZ3XzIbhh73dPHczlCzDwtO1N42UG&index=3)
 
-## The system OpenCV with CUDA
+### The system OpenCV with CUDA
 
 JetPack 6.2 requires OpenCV 4.10+ for CUDA 12.6 compatibility. You can install it by following these steps:
 [opencv/v4.12](https://zenn.dev/ryuya0124/articles/766cbe737eb281)
@@ -34,7 +34,7 @@ sudo docker run -d \
 ```
 I installed inference v0.64.8.
 
-## OAK camera
+## OAK camera: OAK-1-Lite
 
 You will need to install `depthai` library using [Depthai](https://pypi.org/project/depthai/2.30.0.0/). We are using this version:
 
@@ -42,7 +42,7 @@ You will need to install `depthai` library using [Depthai](https://pypi.org/proj
  pip install depthai==2.30.0.0
 ```
 
-## RTSP Streaming
+### RTSP Streaming
 
 Original instructions are at: [OAK example](https://github.com/luxonis/oak-examples/tree/master/gen2-rtsp-streaming).
 This example allows you to stream frames using [MediaMTX](https://github.com/bluenviron/mediamtx).
@@ -96,9 +96,25 @@ On Ubuntu or Mac OS, you can use `ffplay` (part of the `ffmpeg` library) to prev
 ffplay -fflags nobuffer -fflags discardcorrupt -flags low_delay -framedrop rtsp://localhost:8554/mystream
 ```
 
+# AI safety inspection system:
+
+Our system is designed for occupational safety monitoring. It consists of three main tasks:
+
+- Detecting workers who are missing required safety equipment using a YOLO model (helmet, harness, person).
+- Send alerts when workers enter restricted areas.
+- Segmenting hazardous zones.
+
+Our system leverages the Roboflow pipeline - our workflows are as follows:
+<img width="584" height="404" alt="image" src="https://github.com/user-attachments/assets/786ae026-923e-4223-a9b2-e6b41a27b0d9" />
+
+After successfully running the image on the workflows (Serverless API), we proceed to retrieve the sample code as follows: Workflows → Deploy → Video → Local Server → Copy code.
+
+InferenceHTTPClient.py: The new code is designed to work with an inference-server container that can utilize GPU acceleration.
+InferencePipeline.py: the previous implementation supported running locally in offline mode, typically using CPU-based inference.
+
 ## Error
 
-Summary: Can not run? No images are displayed? The system killed without showing any errors? It's incompatibility issue.
+Summary: Can not run? No images are displayed? The system killed without showing any errors? It's incompatibility issue. [Topic](https://discuss.roboflow.com/t/local-inference-not-working-on-jetpack-6-2-2-yolov8-workflow-rtsp-stream/11858)
 
 Environment: Jetson device, JetPack 6.2.2 (system OpenCV built with CUDA v4.10 or v4.12).
 Inference v0.64.0 ~ 1.0.1.
@@ -115,4 +131,3 @@ pip uninstall opencv-python
 Finding
 This points to an incompatibility between the pip opencv-python wheel bundled with the Inference package and the system OpenCV with CUDA (JetPack 6.2.2).
 
-# AI-safety-inspection-system
