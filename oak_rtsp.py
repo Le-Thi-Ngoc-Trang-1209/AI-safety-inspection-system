@@ -24,7 +24,7 @@ FPS = 30
 colorCam = pipeline.create(dai.node.ColorCamera)
 colorCam.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
 colorCam.setInterleaved(False)
-colorCam.setVideoSize(640.640)
+colorCam.setVideoSize(640,640)
 colorCam.setFps(FPS)
 
 videnc = pipeline.create(dai.node.VideoEncoder)
