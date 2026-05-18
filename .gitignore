@@ -1,0 +1,25 @@
+# Environment variables (SECRET)
+.env
+
+# Python bytecode
+__pycache__/
+*.pyc
+.lh/
+
+
+
+# Logs & runtime outputs
+*.log
+warning/summary/Images/
+warning/summary/Minute_log/
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Or if you put them in a folder
+warning/secret/
