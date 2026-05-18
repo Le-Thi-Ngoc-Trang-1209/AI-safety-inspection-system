@@ -41,6 +41,14 @@ You will need to install `depthai` library using [Depthai](https://pypi.org/proj
 ```bash
  pip install depthai==2.30.0.0
 ```
+### UVC: (Webcam simulator)
+
+Original instructions are at: [OAK uvc](https://github.com/luxonis/depthai-python/blob/main/examples/UVC/uvc_rgb.py).
+
+OAK camera → UVC → "DepthAI UVC Camera": 
+```
+python oak_uvc.py
+```
 
 ### RTSP Streaming
 
@@ -79,7 +87,7 @@ $ ./mediamtx
 Now let's run the rtsp.py script, which will start publishing H264-encoded stream to the MediaMTX server.
 
 ```
-python3 rtsp.py
+python3 oak_rtsp.py
 ```
 
 ### View stream

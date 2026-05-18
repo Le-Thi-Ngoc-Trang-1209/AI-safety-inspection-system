@@ -1,0 +1,18 @@
+{
+    "sourceFile": "InferenceHTTPClient.py",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1779079127939,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1779079127939,
+            "name": "Commit-0",
+            "content": "import cv2\r\nfrom inference_sdk import InferenceHTTPClient\r\nfrom inference_sdk.webrtc import RTSPSource, StreamConfig, VideoMetadata, WebcamSource\r\nimport os\r\n\r\nos.makedirs(\"image\", exist_ok=True)\r\n\r\n# Initialize client\r\nclient = InferenceHTTPClient.init(\r\n    api_url=\"http://localhost:9001\",\r\n    api_key=\"API_key\"\r\n)\r\n \r\n# Configure video source (RTSP stream)\r\nsource = RTSPSource(\"rtsp://localhost:8554/mystream\")\r\n# if use webcam (device_id=0), use OAK-1-Lite (uvc): device_id=1\r\n#source = WebcamSource(resolution=resolution,device_id=1)\r\n\r\n \r\n# Configure streaming options\r\nconfig = StreamConfig(\r\n    stream_output=[\"image\"],\r\n    data_output=[\"infor\"]      # Get prediction data via datachannel\r\n)\r\n \r\n# Create streaming session\r\nsession = client.webrtc.stream(\r\n    source=source,\r\n    workflow=\"check\",\r\n    workspace=\"kawadard\",\r\n    image_input=\"image\",\r\n    config=config\r\n)\r\n \r\n# Handle incoming video frames\r\n@session.on_frame\r\ndef show_frame(frame, metadata):\r\n    print(frame.shape)\r\n    if metadata.frame_id % 10 == 0:\r\n        cv2.imwrite(f\"image/frame_{metadata.frame_id}.jpg\", frame)\r\n       \r\n    cv2.imshow(\"Workflow Output\", frame)\r\n    if cv2.waitKey(1) & 0xFF == ord(\"q\"):\r\n        session.close()\r\n    \r\n \r\n# Handle prediction data via datachannel\r\n@session.on_data()\r\ndef on_data(data: dict, metadata: VideoMetadata):\r\n    print(f\"Frame {metadata.frame_id}: {data}\")\r\n \r\n# Run the session (blocks until closed)\r\nsession.run()\r\n \r\n"
+        }
+    ]
+}

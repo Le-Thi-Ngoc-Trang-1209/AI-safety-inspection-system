@@ -1,0 +1,18 @@
+{
+    "sourceFile": "oak_uvc.py",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1779079125778,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1779079125778,
+            "name": "Commit-0",
+            "content": "import depthai as dai\r\n\r\n# 1) Tạo pipeline\r\npipeline = dai.Pipeline()\r\n\r\n# 2) Nguồn RGB và node UVC\r\ncam = pipeline.create(dai.node.ColorCamera)\r\ncam.setBoardSocket(dai.CameraBoardSocket.CAM_A)\r\ncam.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)\r\ncam.setInterleaved(False)\r\n\r\n# ✨ 2) Ép video-output của ISP ra 1280x720 (NV12)\r\ncam.setVideoSize(640, 480)\r\n\r\n# angle view\r\nuvc = pipeline.create(dai.node.UVC)\r\ncam.video.link(uvc.input)  # ColorCamera.video là NV12 -> hợp UVC\r\n\r\n# 3) Khai báo UVC từ sớm trong BoardConfig\r\ncfg = dai.Device.Config()\r\ncfg.board.uvc = dai.BoardConfig.UVC(640, 480)\r\ncfg.board.uvc.frameType = dai.ImgFrame.Type.NV12\r\n# cfg.board.uvc.cameraName = \"OAK-1\"  # tùy chọn\r\n \r\n# 4) Gắn BoardConfig vào pipeline (pre-boot)\r\npipeline.setBoardConfig(cfg.board)\r\n\r\n# 5) Boot thiết bị với pipeline đã có BoardConfig\r\nwith dai.Device(pipeline) as device:\r\n    print(\"UVC đã bật. Mở Zoom/OBS/Camera app và chọn 'DepthAI UVC'...\")\r\n    while True:\r\n        pass"
+        }
+    ]
+}

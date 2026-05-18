@@ -1,6 +1,6 @@
 import cv2
 from inference_sdk import InferenceHTTPClient
-from inference_sdk.webrtc import RTSPSource, StreamConfig, VideoMetadata
+from inference_sdk.webrtc import RTSPSource, StreamConfig, VideoMetadata, WebcamSource
 import os
 
 os.makedirs("image", exist_ok=True)
@@ -13,6 +13,9 @@ client = InferenceHTTPClient.init(
  
 # Configure video source (RTSP stream)
 source = RTSPSource("rtsp://localhost:8554/mystream")
+# if use webcam (device_id=0), use OAK-1-Lite (uvc): device_id=1
+#source = WebcamSource(resolution=resolution,device_id=1)
+
  
 # Configure streaming options
 config = StreamConfig(
