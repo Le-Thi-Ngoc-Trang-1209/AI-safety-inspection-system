@@ -81,6 +81,7 @@ class Second_Aggregator:
         alert: str = "Teams",
         url: str = "",
         save_log: bool = True
+        #in_valid_zone: bool = True
     ):
         self.report_dir = Path(report_dir)
         self.tie_break = tie_break
@@ -89,14 +90,28 @@ class Second_Aggregator:
         self.save_log = save_log
         #self.row: List[Dict[str, Any]] = [] 
         self.url = url
+        #self.in_valid_zone = in_valid_zone
+        self.min_y2 = 424
+        self.max_y2 = 550
 
         # csv information
-        self.csv_header = ["start_time", "person_id", "frames_total", "state", "xyxy"]
+        #self.csv_header = ["start_time", "person_id", "frames_total", "state", "xyxy"]
+        self.csv_header = [
+            "start_time", "person_id", "frames_total",
+            "state", "xyxy",
+            "valid_ratio", "in_valid_zone"
+        ]
         self.first_xyxy: Dict[int, Tuple[float,float,float,float]] = {}  # pid, xyxy
         self.state_counter = defaultdict(Counter)             # (pid, second): Counter(state)
         self.last_seen: Dict[Tuple[int, datetime], str] = {}  # ((pid, second), last state)
         self.last_second_of_person: Dict[int, datetime] = {}  # (pid, last second)
         self.latest_hits: Dict[int, int] = {}                 # (pid, last frs)
+
+        # Save log igore person outside
+        self.valid_counter = defaultdict(int)  # (pid, second) -> số frame valid
+        self.total_counter = defaultdict(int)  # tổng frame (optional, nhưng tốt)
+        self.full_dir = self.report_dir / "full"
+        self.valid_dir = self.report_dir / "valid"
 
         # Write alarm
         self.do_alert = do_alert
@@ -129,6 +144,9 @@ class Second_Aggregator:
             hits = int(r["frames_total"])
             state = str(r["state"])
             xyxy = r["xyxy"]
+            y2 = xyxy[3]
+            in_valid = (self.min_y2 <= y2 <= self.max_y2)
+
 
             # 0) Standardize timestamps
             if not isinstance(ts, datetime):
@@ -146,12 +164,17 @@ class Second_Aggregator:
                 row = self._flush(pid, prev_second)
                 if row and str(row["state"]).startswith("NG"):
                     flushed_rows.append(row)
-
+            
             # 3) Count state: {(pid, second): Counter({'OK': 2, 'NG_H': 1, 'NG_R': 1, 'NG_HR': 1})
             self.state_counter[(pid, second)][state] += 1
             self.last_seen[(pid, second)] = state
             self.last_second_of_person[pid] = second
             self.latest_hits[pid] = hits
+
+            # ✅ update counter
+            self.total_counter[(pid, second)] += 1
+            if in_valid:
+                self.valid_counter[(pid, second)] += 1
 
         return flushed_rows
 
@@ -177,6 +200,13 @@ class Second_Aggregator:
         # Take the information of trackID for second log
         frames_total = self.latest_hits.get(pid, 0) # if can not get, return 0
         main_xyxy = self.first_xyxy.get(pid, (None, None, None, None))
+        
+        # Calculate valid ratio
+        valid_count = self.valid_counter.pop((pid, second), 0)
+        total_count = self.total_counter.pop((pid, second), sum(cnt.values()))
+        valid_ratio = valid_count / max(total_count, 1)
+        in_valid_zone = valid_ratio >= 0.5   # threshold
+
 
         row = {
             "start_time": second,
@@ -184,6 +214,8 @@ class Second_Aggregator:
             "frames_total": frames_total,
             "state": maj_state,
             "xyxy": main_xyxy,
+            "valid_ratio": round(valid_ratio, 2),
+            "in_valid_zone": in_valid_zone
         }
 
         payload = {
@@ -195,12 +227,23 @@ class Second_Aggregator:
         }
 
         # save to file second log
-        if self.save_log:
+        """if self.save_log:
             csv_path = self._build_path_for_second(second)
-            self._write_row(csv_path, row)
+            self._write_row(csv_path, row)"""
+
+        if self.save_log:
+            # FULL LOG 
+            full_path = self._build_path_for_second(second, subdir="full")
+            self._write_row(full_path, row)
+
+            # VALID LOG (chỉ ghi nếu hợp lệ)
+            if in_valid_zone:
+                valid_path = self._build_path_for_second(second, subdir="valid")
+                self._write_row(valid_path, row)
+
 
         # Update streak by second
-        is_ng = str(maj_state).startswith("NG")
+        is_ng = str(maj_state).startswith("NG") and in_valid_zone
         if is_ng:
             self.ng_streak[pid] = self.ng_streak.get(pid, 0) + 1
         else:
@@ -220,10 +263,13 @@ class Second_Aggregator:
             ).start(),
             "mail": lambda: print("Coming soon...")
         }
-        if self.do_alert and streak % self.ng_threshold_seconds == 0:
+        if self.do_alert and in_valid_zone and streak % self.ng_threshold_seconds == 0:
             # Convert => correct format.
             handlers.get(self.alert.lower(), lambda: print("Invalid alert type. Please choose the type of alert to send."))()
-    
+
+        self.first_xyxy.pop(pid, None)
+        self.latest_hits.pop(pid, None)
+
         # Check if NG   
         if is_ng:
             return row
@@ -231,9 +277,13 @@ class Second_Aggregator:
 
 
     # Create the file path using the date name
-    def _build_path_for_second(self, second: datetime, **kwargs) -> Path:
+    def _build_path_for_second(self, second: datetime, subdir: str="", **kwargs) -> Path:
         date_str = second.date().isoformat()  # YYYY-MM-DD
-        return self.report_dir / f"second_log_{date_str}.csv"
+        if subdir:
+            return self.report_dir / subdir / f"second_log_{date_str}.csv"
+        else:
+            return self.report_dir / f"second_log_{date_str}.csv"
+
 
     # write outputs to file csv
     def _write_row(self, csv_path: Path, row: Dict):
