@@ -266,7 +266,9 @@ class Second_Aggregator:
         if self.do_alert and in_valid_zone and streak % self.ng_threshold_seconds == 0:
             # Convert => correct format.
             handlers.get(self.alert.lower(), lambda: print("Invalid alert type. Please choose the type of alert to send."))()
-
+        if in_valid_zone and streak % 20 == 0:
+            teams_path = self._build_path_for_second(second, subdir="alert")
+            self._write_row(teams_path, row)
         self.first_xyxy.pop(pid, None)
         self.latest_hits.pop(pid, None)
 
