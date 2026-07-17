@@ -2,7 +2,7 @@ from datetime import datetime, time
 import os
 import cv2
 from inference_sdk import InferenceHTTPClient
-from inference_sdk.webrtc import WebcamSource, StreamConfig, VideoMetadata
+from inference_sdk.webrtc import WebcamSource, StreamConfig, VideoMetadata, RTSPSource
 from person_tracking import SimpleTracker
 from make_minute_log import MinuteAggregator
 from pathlib import Path
@@ -18,7 +18,8 @@ def upload_async(image_path, day_folder_name):
 
 
 #------------------------- Initialize ---------------------------------
-load_dotenv()
+## Note: check file .env (not env) via: cat .env; vim .env
+load_dotenv(".env", override=True)
 with open("secret/config.json", "r", encoding="utf-8") as f:
     config = json.load(f)
 api_url = config["roboflow_pipeline"]["api_url"]
@@ -39,6 +40,7 @@ cone_url = os.environ.get(cone_env_name)
 drive_cfg = config["google_drive"]
 cred_path = drive_cfg["credentials_path"]
 token_path = drive_cfg["token_path"]
+print(api_key)
 
 # verification
 if not eq_url:
@@ -112,7 +114,9 @@ client = InferenceHTTPClient.init(
 )
 
 # Configure video source (webcam)
-source = WebcamSource(resolution=resolution)
+#source = WebcamSource(resolution=resolution)
+source = RTSPSource("rtsp://10.21.1.64:8554/preview")
+#source = RTSPSource("rtsp://localhost:8554/mystream")
 
 # Configure streaming options
 config = StreamConfig(
@@ -124,7 +128,7 @@ config = StreamConfig(
 session = client.webrtc.stream(
     source=source,
     workflow="eq",
-    workspace="kawadard",
+    workspace="kawadard2",
     image_input="image",
     config=config
 )
@@ -143,9 +147,9 @@ day_folder_name = obj.ensure_folder(folder_name=date_str, parent_folder_id=image
 
 #------------------------------ Connect Post processing logic step -----------------------------
 # tracker + smoother
-tracker = SimpleTracker(iou_thresh=iou_thresh, max_age=max_age, log_dir=log_dir, save_log=False)
+tracker = SimpleTracker(iou_thresh=iou_thresh, max_age=max_age, log_dir=log_dir, save_log=True)
 # minute summary  
-agg = MinuteAggregator(report_dir=report_dir, ng_threshold_minutes=eq_threshold, alert="TEAMS", url=eq_url, save_log=True)
+agg = MinuteAggregator(report_dir=report_dir, ng_threshold_minutes=eq_threshold, alert="teams", url=eq_url, save_log=True)
 # Create flag for saving NG case and flag for uploading data
 Flag = False
 last_uploaded_hour = None
@@ -156,6 +160,7 @@ stop_flag = False
 # Handle prediction data via datachannel
 @session.on_data()
 def on_data(data: dict, metadata: VideoMetadata):
+    #print("Success 1")
     frame_time = datetime.now().astimezone()   
     frame_id = int(metadata.frame_id)
     global Flag, last_uploaded_hour
@@ -200,6 +205,7 @@ def on_data(data: dict, metadata: VideoMetadata):
 # Handle incoming video frames
 @session.on_frame
 def show_frame(frame, metadata):
+    #print("Success 2")
     global stop_flag, Flag
     frame_time = datetime.now().astimezone()   
     # "The image is an illustrative snapshot; the logical timestamp is in the CSV file."
@@ -208,7 +214,7 @@ def show_frame(frame, metadata):
         image_path = save_snapshot(frame, frame_time, out_dir="summary/Images")
         Flag = False
         #obj.FileUpload(filepath=image_path, parent_folder_id=day_folder_name)
-        threading.Thread(target=upload_async, args=(image_path,day_folder_name), daemon=True).start()
+        #threading.Thread(target=upload_async, args=(image_path,day_folder_name), daemon=True).start()
     
     cv2.imshow("Workflow Output", frame)
     if cv2.waitKey(1) & 0xFF == ord("q"):
@@ -216,9 +222,6 @@ def show_frame(frame, metadata):
 
 try:
     session.run()
-    while not stop_flag:
-        time.sleep(0.05)
-
 finally:
     session.close()
     cv2.destroyAllWindows()

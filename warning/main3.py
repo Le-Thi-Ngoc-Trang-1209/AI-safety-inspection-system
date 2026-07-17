@@ -2,7 +2,7 @@ from datetime import datetime, time
 import os
 import cv2
 from inference_sdk import InferenceHTTPClient
-from inference_sdk.webrtc import WebcamSource, StreamConfig, VideoMetadata, RTSPSource
+from inference_sdk.webrtc import WebcamSource, StreamConfig, VideoMetadata, RTSPSource, ManualSource
 from person_tracking import SimpleTracker
 from make_second_log import Second_Aggregator
 from pathlib import Path
@@ -11,6 +11,7 @@ from upload_to_cloud import DriveAPI
 import json
 from dotenv import load_dotenv
 import threading
+from savevid import RTSPReader
 
 def upload_async(image_path, day_folder_name):
     obj.FileUpload(filepath=image_path, parent_folder_id=day_folder_name)
@@ -116,9 +117,9 @@ client = InferenceHTTPClient.init(
 # Configure video source (webcam)
 #source = WebcamSource(resolution=resolution,device_id=0)
 #source = RTSPSource("rtsp://10.21.1.106:8554/mystream")
-source = RTSPSource("rtsp://localhost:8554/mystream")
+#source = RTSPSource("rtsp://localhost:8554/mystream")
 #source = RTSPSource("rtsp://169.254.150.5:8554/preview")
-
+source = ManualSource()
 
 # Configure streaming options
 config = StreamConfig(
@@ -163,6 +164,7 @@ stop_flag = False
 def on_data(data: dict, metadata: VideoMetadata):
     frame_time = datetime.now().astimezone()   
     frame_id = int(metadata.frame_id)
+    print("frame id;", frame_id)
     global Flag, last_uploaded_hour
     
     # Tracking + State Smoothing
@@ -219,13 +221,28 @@ def show_frame(frame, metadata):
     if cv2.waitKey(1) & 0xFF == ord("q"):
         stop_flag = True
 
-try:
-    #print('pass 2')
+rtsp_url = "rtsp://169.254.150.5:8554/preview"
+reader = RTSPReader(rtsp_url)
+#=========================================
+def run_session():
+    print("session starting")
     session.run()
-    #while not stop_flag:
-        #time.sleep(0.05)
+    print("session stopped")
+threading.Thread(target=run_session, daemon=True).start()
 
-finally:
-    print('pass f')
-    session.close()
-    cv2.destroyAllWindows()
+
+# ================== OAK PIPELINE ==================
+while True:
+    ret, frame = reader.read()
+    if not ret:
+        continue
+        
+     # SEND FRAME TO ROBOFLOW
+    if source._track is not None:
+        try:
+            source.send(frame)
+        except Exception as e:
+            print("Send fail")
+
+
+

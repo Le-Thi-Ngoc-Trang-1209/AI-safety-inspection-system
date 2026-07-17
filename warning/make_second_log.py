@@ -91,8 +91,8 @@ class Second_Aggregator:
         #self.row: List[Dict[str, Any]] = [] 
         self.url = url
         #self.in_valid_zone = in_valid_zone
-        self.min_y2 = 424
-        self.max_y2 = 550
+        self.min_y2 = 356
+        self.max_y2 = 471
 
         # csv information
         #self.csv_header = ["start_time", "person_id", "frames_total", "state", "xyxy"]
@@ -237,9 +237,9 @@ class Second_Aggregator:
             self._write_row(full_path, row)
 
             # VALID LOG (chỉ ghi nếu hợp lệ)
-            if in_valid_zone:
+            """if in_valid_zone:
                 valid_path = self._build_path_for_second(second, subdir="valid")
-                self._write_row(valid_path, row)
+                self._write_row(valid_path, row)"""	
 
 
         # Update streak by second
@@ -266,7 +266,7 @@ class Second_Aggregator:
         if self.do_alert and in_valid_zone and streak % self.ng_threshold_seconds == 0:
             # Convert => correct format.
             handlers.get(self.alert.lower(), lambda: print("Invalid alert type. Please choose the type of alert to send."))()
-        if in_valid_zone and streak % 20 == 0:
+        if in_valid_zone and streak % 15 == 0:
             teams_path = self._build_path_for_second(second, subdir="alert")
             self._write_row(teams_path, row)
         self.first_xyxy.pop(pid, None)
