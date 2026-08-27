@@ -2,7 +2,6 @@ import depthai as dai
 import cv2
 import numpy as np
 from ultralytics import YOLO
-from savevid import RTSPReader
 from person_tracking import SimpleTracker
 from datetime import datetime
 import time
@@ -12,14 +11,15 @@ from PIL import Image, ImageDraw, ImageFont
 
 
 
-det_model = YOLO("weight/weights.engine")
+det_model = YOLO("weight/fill.engine")
 
 frame_w = 640
 frame_h = 640
 
 #RTSP = "rtsp://169.254.150.5:8554/preview"
-RTSP = "rtsp://10.21.1.170:8554/preview"
-reader = RTSPReader(RTSP)
+#RTSP = "rtsp://localhost:8554/mystream"
+VIDEO_PATH = "output.mp4"
+cap = cv2.VideoCapture(VIDEO_PATH)
 
 
 # ========= Utils =========
@@ -159,12 +159,24 @@ start_time = time.time()
     
 # ================== OAK PIPELINE ==================
 frame_id = 0
-latest_result = "Checking...."
-#latest_result = "                確認中..."
+#latest_result = "Checking...."
+latest_result = "                確認中..."
 color_result = COLOR_Pending
 cl = (0, 0, 255)
+
+fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+out = cv2.VideoWriter(
+ "result.mp4",
+ fourcc,
+ 30,
+ (640, 640)
+)
+
 while True:
-    ret, frame = reader.read()
+    ret, frame = cap.read()
+    if not ret:
+        break
+
     frame_time = datetime.now().astimezone()  
 
     #print(frame_time) 
@@ -177,8 +189,8 @@ while True:
     output = frame.copy()
     #cv2.rectangle(output, (zone_xyxy[0], zone_xyxy[1]), (zone_xyxy[2], zone_xyxy[3]), COLOR_NG, 7)
     output = draw_human_shape(output)
-    cv2.putText(output, "Please align your body with the line", (30, 40), FONT, 0.8, COLOR_NG, 2, cv2.LINE_AA)
-    #output = draw_jp_text(output, "体の位置を調整してください。", 130, 5, Color_ng)
+    #cv2.putText(output, "Please align your body with the line", (30, 40), FONT, 0.8, COLOR_NG, 2, cv2.LINE_AA)
+    output = draw_jp_text(output, "体の位置を調整してください。", 130, 5, Color_ng)
     
     #t1 = time.perf_counter()
     det_result = det_model(
@@ -252,8 +264,8 @@ while True:
     if active_pids == []:
         target_person = None
         ready = False
-        reminder = "Waiting..."
-        #reminder = "緑色の枠内に立ってください"
+        #reminder = "Waiting..."
+        reminder = "緑色の枠内に立ってください"
     else:
         ready, target_person, reminder = filter.select(active_pids)
         #print(target_person)
@@ -264,44 +276,41 @@ while True:
     # Flush the previous mininute: Save the image 
     if not ready: 
         agg.reset() 
-        latest_result = "Checking....Please wait a moment."
-        #latest_result = "                確認中..."
+        #latest_result = "Checking....Please wait a moment."
+        latest_result = "                確認中..."
         #color_result = COLOR_Pending
         cl = (0, 0, 255)
-        cv2.putText(output, reminder, (50, 630), FONT, 0.8, COLOR_REMINDER, 2, cv2.LINE_AA) 
+        #cv2.putText(output, reminder, (50, 630), FONT, 0.8, COLOR_REMINDER, 2, cv2.LINE_AA) 
         #cv2.rectangle(output, (zone_xyxy[0], zone_xyxy[1]), (zone_xyxy[2], zone_xyxy[3]), color_result, 7)
-        #output = draw_jp_text(output, reminder, 50, 600, COLOR_REMINDER, size=30)
+        output = draw_jp_text(output, reminder, 50, 600, COLOR_REMINDER, size=30)
     else:
         result = agg.ingest(target_person)
         if result is not None:
             if result["state"] == "OK":
                 color_result = COLOR_OK 
                 cl = (0, 255, 0)
-                latest_result = "PASS"
-                #latest_result = "保安具OKです"
+                #latest_result = "PASS"
+                latest_result = "保安具OKです"
             else:
                 color_result = COLOR_NG 
                 cl = Color_ng
                 if result["state"] == "NG_helmet":
-                    latest_result = "NG! Please put on your helmet!"
-                    #latest_result = "NG!ヘルメットを着用してください。"
+                    #latest_result = "NG! Please put on your helmet!"
+                    latest_result = "NG!ヘルメットを着用してください。"
                 elif result["state"] == "NG_harness":
-                    latest_result = "NG! Please put on your harness!"
-                    #latest_result = "NG!ハーネスを着用してください。"
+                    #latest_result = "NG! Please put on your harness!"
+                    latest_result = "NG!ハーネスを着用してください。"
                 else:
-                    latest_result = "NG! Please check your safety equipment!"
-                    #latest_result = "NG!安全装備を確認してください。"
+                    #latest_result = "NG! Please check your safety equipment!"
+                    latest_result = "NG!安全装備を確認してください。"
             #cv2.rectangle(output, (zone_xyxy[0], zone_xyxy[1]), (zone_xyxy[2], zone_xyxy[3]), color_result, 7)
             output=draw_human_shape(output, color_result)
 
-        cv2.putText(output, latest_result, (50, 630), FONT, 0.8, color_result, 2, cv2.LINE_AA)
-        #output = draw_jp_text(output, latest_result, 50, 600, cl, size=30)
-    
-    #output_big = cv2.resize(output, (960, 960))    
+        #cv2.putText(output, latest_result, (50, 630), FONT, 0.8, color_result, 2, cv2.LINE_AA)
+        output = draw_jp_text(output, latest_result, 50, 600, cl, size=30)
+        
+    out.write(output)
     cv2.imshow("PPE + Danger Zone", output)
-    #cv2.namedWindow("PPE", cv2.WINDOW_NORMAL)
-    #cv2.resizeWindow("PPE", 960, 960)
-    #cv2.imshow("PPE", output)
     fps_counter += 1
     if fps_counter == 10:
         elapsed = time.time() - start_time
@@ -316,6 +325,6 @@ while True:
     frame_id += 1
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
-
+cap.release()
 cv2.destroyAllWindows()
 

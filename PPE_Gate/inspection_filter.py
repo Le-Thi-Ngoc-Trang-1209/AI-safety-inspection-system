@@ -34,7 +34,7 @@ class InspectionSelector:
     def check_head_position(self, bbox):
         x1, y1, x2, y2 = bbox
         dy = y1 - self.head_line_y
-        if dy > self.head_tolerance*2:
+        if dy > self.head_tolerance*3:
             return False, "Please move closer to the camera"
             #return False, "もう少し前にお進みください"
         if dy < -self.head_tolerance:
@@ -55,7 +55,7 @@ class InspectionSelector:
 
         if len(candidates) == 0:
             return False, None, "Please stand within the green frame"
-            #return None, "緑色の枠内に立ってください"
+            #return False, None, "緑色の枠内に立ってください"
 
         # d1, d2,... _> return tr
         target = min(
