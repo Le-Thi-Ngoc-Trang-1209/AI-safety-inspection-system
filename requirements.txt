@@ -1,3 +1,15 @@
 depthai==2.30.0
-numpy
+numpy==1.26.4
+torch==2.8.0
+torchvision==0.23.0
 inference==0.64.8
+openCV>=4.10.
+ultralytics
+sudo apt update
+sudo apt install \
+gstreamer1.0-tools \
+gstreamer1.0-plugins-base \
+gstreamer1.0-plugins-good \
+gstreamer1.0-plugins-bad \
+gstreamer1.0-plugins-ugly
+## bash -c "$(curl -fsSL https://oakctl-releases.luxonis.com/oakctl-installer.sh)"
