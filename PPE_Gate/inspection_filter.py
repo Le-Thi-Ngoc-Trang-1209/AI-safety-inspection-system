@@ -1,9 +1,10 @@
 import math
+from datetime import datetime
 class InspectionSelector:
     def __init__(
         self,
         zone_xyxy,
-        head_tolerance=30
+        head_tolerance=20
     ):
         """
         zone_xyxy = [x1, y1, x2, y2]
@@ -34,10 +35,14 @@ class InspectionSelector:
     def check_head_position(self, bbox):
         x1, y1, x2, y2 = bbox
         dy = y1 - self.head_line_y
-        if dy > self.head_tolerance*3:
+        """with open("log/dy_log.txt", "a") as f:
+            f.write(
+            f"{datetime.now()} y1={y1:.1f} dy={dy:.1f}\n"
+            )"""
+        if dy > self.head_tolerance*4:
             return False, "Please move closer to the camera"
             #return False, "もう少し前にお進みください"
-        if dy < -self.head_tolerance:
+        if dy < -self.head_tolerance*2:
             return False, "Please move back."
             #return False, "少し後ろに下がってください"
 
