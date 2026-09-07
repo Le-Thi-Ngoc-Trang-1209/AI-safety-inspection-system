@@ -6,18 +6,23 @@ from savevid import RTSPReader
 from person_tracking import SimpleTracker
 from datetime import datetime
 import time
-from inspection_filter import InspectionSelector
+from inspection_filter_jp import InspectionSelector
 from inspection_agg import InspectionAggregator
 from PIL import Image, ImageDraw, ImageFont
-import subprocess
-import traceback
-import os
-import json
+
+
+
+det_model = YOLO("weight/weights.engine")
+
+frame_w = 640
+frame_h = 640
+
+#RTSP = "rtsp://169.254.150.5:8554/preview"
+RTSP = "rtsp://10.21.1.170:8554/preview"
+reader = RTSPReader(RTSP)
 
 
 # ========= Utils =========
-
-# Threshold
 IOU_MATCH_THRES_HELMET = 0.10      
 IOU_MATCH_THRES_HARNESS   = 0.20      
 USE_REGIONS = True 
@@ -27,9 +32,10 @@ HELMET_ID = 2
 PERSON_ID = 3
 
 
-# Color
+# Màu vẽ
 COLOR_OK      = (0, 200, 0)        # xanh lá
 COLOR_NG      = (0, 0, 255)        # đỏ
+Color_ng      = (255, 0, 0)
 COLOR_HELMET  = (0, 200, 255)      # cam
 COLOR_HARNESS    = (23, 53, 180)     # xanh dương nhạt/da cam
 COLOR_GROUND = (255, 255, 255)
@@ -38,9 +44,6 @@ COLOR_Pending = (255, 120, 0)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
 overlay = cv2.imread("icon/human.png", cv2.IMREAD_UNCHANGED)
 
-
-
-# Draw human shape (Red: ready/NG, Blue: Checking, Green: OK)
 def draw_human_shape(frame, color=(0, 0, 255)):
     """
     color là BGR:
@@ -67,8 +70,24 @@ def draw_human_shape(frame, color=(0, 0, 255)):
     frame[y:y+600, x:x+320] = roi
     return frame
 
+def draw_jp_text(img, text, x, y, color=(0,255,0), size=30):
+    font = ImageFont.truetype(
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    size
+    )
+    pil = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    draw = ImageDraw.Draw(pil)
+    draw.text(
+        (x, y),
+        text,
+        font=font,
+        fill=color
+        )
+    return cv2.cvtColor(
+        np.array(pil),
+        cv2.COLOR_RGB2BGR
+        )
 
-# Calculate the iou threshold between H, N and P
 def iou_xyxy(a, b):
     x1 = max(a[0], b[0]); y1 = max(a[1], b[1])
     x2 = min(a[2], b[2]); y2 = min(a[3], b[3])
@@ -78,7 +97,6 @@ def iou_xyxy(a, b):
     union = area_a + area_b - inter
     return inter / union if union > 0 else 0.0
     
-# Calculate head area of person
 def head_region(bbox, top_ratio=0.3):
     x1, y1, x2, y2 = bbox
     h = y2 - y1
@@ -128,95 +146,44 @@ def match_eq_to_person(eq, person, region_fn, iou_thresh):
             eq_conf.append(None)
     return has_eq, eq_bbox, eq_conf
 
-
-# Exception logs
-def write_log(message):
-    #print (message)
-    os.makedirs("log/exception_log", exist_ok=True)
-    log_file = os.path.join(
-        "log/exception_log",
-        datetime.now().strftime("%Y-%m-%d.log")
-    )
-    with open(log_file, "a", encoding="utf-8") as f:
-        f.write(
-        f"[{datetime.now().strftime('%H:%M:%S')}] {message}\n"
-    )
-
-# Play recorded sound
-def play_audio(path="Test"):
-    path = "sound/"+ path + ".wav"
-    #print(path)
-    try: 
-        if not os.path.exists(path):
-            raise FileNotFoundError(path)
-        subprocess.Popen(["paplay", path])
-        message = f"Play sound {path} successfully"
-    except Exception:
-        message = f"Sound playback failed\n {traceback.format_exc()}"
-    write_log(message)
-
-
-#### Init
-fps_counter = 0
-start_time = time.time()
-frame_id = 0
-latest_result = "pending...."
-color_result = COLOR_Pending
-last_reminder = None
-reminder_frames = 0
-FPS_EST = 20
-VOICE_DELAY_SEC = 4
-last_announced_state = None
-last_person_id = 0
-last_sound = 0
-state_change_counter = 0  
-frame_w = 640
-frame_h = 640
-zone_xyxy = [100,50,500,600]
-
-
 #------------------------------ Connect Post processing logic step -----------------------------
-# Initial model
-det_model = YOLO("weight/weights.engine")
-
-# Initial RTSP stream
-RTSP = "rtsp://10.21.1.213:8554/preview"
-try:
-    reader = RTSPReader(RTSP)
-except Exception:
-    write_log(f"[ERROR] Camera loading failed.")
-
 # tracker + smoother
 tracker = SimpleTracker()
-
 # filter
+zone_xyxy = [100,50,500,600]
 filter = InspectionSelector(zone_xyxy)
-
-# second summary  
+# minute summary  
 agg = InspectionAggregator(window_sec=3)
-
-
+fps_counter = 0
+start_time = time.time()
     
 # ================== OAK PIPELINE ==================
+frame_id = 0
+latest_result = "Checking...."
+#latest_result = "                確認中..."
+color_result = COLOR_Pending
+cl = (0, 0, 255)
 while True:
     ret, frame = reader.read()
     frame_time = datetime.now().astimezone()  
 
     #print(frame_time) 
     if not ret:
-        write_log(f"[ERROR] Camera read failed.")
         continue
 	
+    
     #t0 = time.perf_counter()
 
     output = frame.copy()
+    #cv2.rectangle(output, (zone_xyxy[0], zone_xyxy[1]), (zone_xyxy[2], zone_xyxy[3]), COLOR_NG, 7)
     output = draw_human_shape(output)
-    cv2.putText(output, "Please move until the human line turns blue", (30, 40), FONT, 0.8, COLOR_Pending, 2, cv2.LINE_AA)
+    cv2.putText(output, "Please align your body with the line", (30, 40), FONT, 0.8, COLOR_NG, 2, cv2.LINE_AA)
+    #output = draw_jp_text(output, "体の位置を調整してください。", 130, 5, Color_ng)
     
     #t1 = time.perf_counter()
     det_result = det_model(
         frame,
-        conf=0.6,
+        conf=0.55,
         verbose=False
     )[0]
     #t2 = time.perf_counter()
@@ -248,6 +215,9 @@ while True:
     # Count & Draw
     outlist = []
     for i, p in enumerate(persons):
+        #px1, py1, px2, py2 = map(int, p["bbox"])
+        #conf = p["conf"]
+        #ok_person = bool(has_helmet[i]) and bool(has_harness[i]) # T or F
         
         if has_helmet[i] and has_harness[i]:
            status = 'OK'
@@ -268,121 +238,81 @@ while True:
     # Tracking + State Smoothing
     active_pids, lost_pids, new_pids = tracker.update(frame_id, outlist, frame_time=frame_time)
     #print("Pids:", active_pids)
-    cv2.rectangle(output, (0, 580), (640, 640), COLOR_GROUND, -1)
+    
+    # Draw simple bbox
+    """valid_pids = []
+    for p in active_pids:
+        state = str(p["state"])
+        px1, py1, px2, py2 = map(int, p["xyxy"])
+        
+        cv2.rectangle(output, (px1, py1), (px2, py2), COLOR_HARNESS, 3)
+        #cv2.putText(output, label, ((px1 + 6), (py2 - 10)), FONT, 0.8, color, 2, cv2.LINE_AA)"""
+
+    cv2.rectangle(output, (0, 600), (640, 640), COLOR_GROUND, -1)
     if active_pids == []:
-        # person is not in available area
         target_person = None
         ready = False
-        reminder = "Please stand within the green frame"
+        reminder = "Waiting..."
+        #reminder = "緑色の枠内に立ってください"
     else:
-        # has person in prediction area
         ready, target_person, reminder = filter.select(active_pids)
-        
-        # Count the number of reminders
-        if reminder == last_reminder:
-            reminder_frames += 1
-        else:
-            reminder_frames = 1
-            last_reminder = reminder
         #print(target_person)
-
-        # Follow the person in green frame/ human shape
         if target_person is not None: 
             px1, py1, px2, py2 = map(int, target_person["xyxy"])
-            new_person_id = int(target_person["personID"])
             cv2.rectangle(output, (px1, py1), (px2, py2), COLOR_HELMET, 3)
     
-    # Vote
+    # Flush the previous mininute: Save the image 
     if not ready: 
-        # no person -> reset
         agg.reset() 
         latest_result = "Checking....Please wait a moment."
-        color_result = COLOR_Pending
-        cv2.putText(output, reminder, (20, 620), FONT, 1, COLOR_REMINDER, 2, cv2.LINE_AA) 
-
-        # Remind if person stands in an unavailble area too long
-        if reminder_frames >= (FPS_EST * VOICE_DELAY_SEC):
-            if reminder == "Please move closer to the camera":
-                play_audio("close")
-            elif reminder == "Please move back.":
-                play_audio("back")
-            reminder_frames = 0
+        #latest_result = "                確認中..."
+        #color_result = COLOR_Pending
+        cl = (0, 0, 255)
+        cv2.putText(output, reminder, (50, 630), FONT, 0.8, COLOR_REMINDER, 2, cv2.LINE_AA) 
+        #cv2.rectangle(output, (zone_xyxy[0], zone_xyxy[1]), (zone_xyxy[2], zone_xyxy[3]), color_result, 7)
+        #output = draw_jp_text(output, reminder, 50, 600, COLOR_REMINDER, size=30)
     else:
         result = agg.ingest(target_person)
-        #print(result)
         if result is not None:
-            #print(result)
-            #message = f"Received PPE result: {result}"
-            write_log(f"Received PPE result:")
-            write_log(json.dumps(result, default=str))
-            current_state = result["state"]
-
-            # Link to text to display
-            if current_state == "OK":
+            if result["state"] == "OK":
                 color_result = COLOR_OK 
+                cl = (0, 255, 0)
                 latest_result = "PASS"
+                #latest_result = "保安具OKです"
             else:
                 color_result = COLOR_NG 
-                if current_state == "NG_helmet":
+                cl = Color_ng
+                if result["state"] == "NG_helmet":
                     latest_result = "NG! Please put on your helmet!"
-                elif current_state == "NG_harness":
+                    #latest_result = "NG!ヘルメットを着用してください。"
+                elif result["state"] == "NG_harness":
                     latest_result = "NG! Please put on your harness!"
+                    #latest_result = "NG!ハーネスを着用してください。"
                 else:
-                    latest_result = "Please check your safety equipment!"
+                    latest_result = "NG! Please check your safety equipment!"
+                    #latest_result = "NG!安全装備を確認してください。"
+            #cv2.rectangle(output, (zone_xyxy[0], zone_xyxy[1]), (zone_xyxy[2], zone_xyxy[3]), color_result, 7)
+            output=draw_human_shape(output, color_result)
 
-
-            # Link to voice to speak the reminder
-            if new_person_id == last_person_id:
-                if current_state == last_announced_state:
-                    last_sound += 1
-                    state_change_counter = 0
-                    if last_sound >= 4:
-                        ## Repeat
-                        play_audio(current_state)
-                        last_sound = 1   
-                    else:
-                        #print("The same state with same person. Skip alarm.") 
-                        write_log("The same state with same person. Skip alarm.")               
-                else:
-                    state_change_counter += 1
-                    if state_change_counter >= 2:
-                        ## Renew state
-                        play_audio(current_state)
-                        state_change_counter = 0  
-                        last_sound = 1
-                        last_announced_state = current_state
-                    else:
-                        last_sound = 0
-                        #print("Skip alarm. Noise because of fast sound")
-                        write_log("Skip alarm. Noise because of fast sound")
-            else:
-                last_sound = 1
-                state_change_counter = 0
-                play_audio(current_state) 
-                last_announced_state = current_state
-                ## update the last person id:
-                last_person_id = new_person_id
-
-        # change color of human shape
-        output=draw_human_shape(output, color_result)
-
-        # show result (not change in 1~2s)
-        cv2.rectangle(output, (0, 580), (640, 640), COLOR_GROUND, -1)
-        cv2.putText(output, latest_result, (10, 620), FONT, 1, color_result, 2, cv2.LINE_AA)
-
-    #print(output.shape)
-    #cv2.namedWindow("PPE inspection", cv2.WINDOW_NORMAL)
-    cv2.imshow("PPE inspection", output)
+        cv2.putText(output, latest_result, (50, 630), FONT, 0.8, color_result, 2, cv2.LINE_AA)
+        #output = draw_jp_text(output, latest_result, 50, 600, cl, size=30)
     
-    # Calculate the FPS
-    """fps_counter += 1
+    #output_big = cv2.resize(output, (960, 960))    
+    cv2.imshow("PPE + Danger Zone", output)
+    #cv2.namedWindow("PPE", cv2.WINDOW_NORMAL)
+    #cv2.resizeWindow("PPE", 960, 960)
+    #cv2.imshow("PPE", output)
+    fps_counter += 1
     if fps_counter == 10:
         elapsed = time.time() - start_time
         fps = fps_counter / elapsed
         print(f"Average FPS (10 frames): {fps:.2f}")
         fps_counter = 0
-        start_time = time.time()"""
+        start_time = time.time()
 
+    #t3 = time.perf_counter()
+    #print(f"prep={(t2-t1)*1000:.1f}ms "
+    #        f"total={(t3-t0)*1000:.1f}ms")
     frame_id += 1
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break

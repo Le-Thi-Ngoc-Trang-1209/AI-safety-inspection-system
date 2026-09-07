@@ -1,6 +1,5 @@
 import math
 from datetime import datetime
-
 class InspectionSelector:
     def __init__(
         self,
@@ -16,7 +15,6 @@ class InspectionSelector:
         self.zone_cy = (zone_xyxy[1] + zone_xyxy[3]) / 2
         self.head_line_y = zone_xyxy[1]
         self.head_tolerance = head_tolerance
-
 
     # ------------ Check center in zone---------------------------------
     def is_inside_zone(self, bbox):
@@ -43,8 +41,10 @@ class InspectionSelector:
             )"""
         if dy > self.head_tolerance*4:
             return False, "Please move closer to the camera"
+            #return False, "もう少し前にお進みください"
         if dy < -self.head_tolerance*2:
             return False, "Please move back."
+            #return False, "少し後ろに下がってください"
 
         return True, "READY"
 
@@ -59,7 +59,8 @@ class InspectionSelector:
                 candidates.append(tr)
 
         if len(candidates) == 0:
-            return False, None, "Align your body with the human outline"
+            return False, None, "Please stand within the green frame"
+            #return False, None, "緑色の枠内に立ってください"
 
         # d1, d2,... _> return tr
         target = min(
@@ -67,10 +68,10 @@ class InspectionSelector:
             key=lambda t: self.center_distance(t["xyxy"])
         )
 
-        ready, reminder = self.check_head_position(target["xyxy"])
+        ready, msg = self.check_head_position(target["xyxy"])
 
         # if in valid, return track. Else: return message
         if not ready:
-            return ready, target, reminder
+            return ready, target, msg
 
         return True, target, "READY"

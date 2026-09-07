@@ -42,7 +42,7 @@ COLOR_GROUND = (255, 255, 255)
 COLOR_REMINDER = (0, 0, 0)
 COLOR_Pending = (255, 120, 0)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
-overlay = cv2.imread("Picture2.png", cv2.IMREAD_UNCHANGED)
+overlay = cv2.imread("icon/human.png", cv2.IMREAD_UNCHANGED)
 
 def draw_human_shape(frame, color=(0, 0, 255)):
     """
